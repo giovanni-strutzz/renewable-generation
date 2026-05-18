@@ -94,7 +94,7 @@ services:
     restart: unless-stopped
     command: scheduler
 
-  airflow-dag-processor: # ✅ novo no Airflow 3.x
+  airflow-dag-processor:
     <<: *airflow-common
     container_name: airflow-dag-processor
     restart: unless-stopped
@@ -118,46 +118,7 @@ services:
       - "localstack_data:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
-      - fraud-network
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper
-    networks:
-      - fraud-network
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    networks:
-      - fraud-network
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - "8080:8080"
-    networks:
-      - fraud-network
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-
-  redis:
-    image: redis:7
-    container_name: redis
-    networks:
-      - fraud-network
-    volumes:
-      - redis_data:/data
+      - network
 
 volumes:
   mongo_data:
@@ -166,5 +127,5 @@ volumes:
   localstack_data:
 
 networks:
-  fraud-network:
+  aws-network:
     driver: bridge
