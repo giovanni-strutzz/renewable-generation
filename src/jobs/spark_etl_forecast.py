@@ -2,7 +2,7 @@ import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, explode, arrays_zip, lit, round, when
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:admin@localhost:27017/energy_db?authSource=admin")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:admin@mongodb:27017/energy_db?authSource=admin")
 BUCKET_S3 = os.getenv("BUCKET_S3", "s3a://raw-zone/weather-data/*.json")
 
 JAR_DIR = os.path.expanduser("~/spark-jars")
@@ -19,10 +19,10 @@ def create_spark_session() -> SparkSession:
     Create Spark session
     """
     return SparkSession.builder \
-        .appName("Auren_Energy_Forecast_ETL") \
-        .config("spark.mongodb.write.connection.uri", "mongodb://admin:admin@localhost:27017/energy_db?authSource=admin") \
+        .appName("Energy_Forecast_ETL") \
+        .config("spark.mongodb.write.connection.uri", "mongodb://admin:admin@mongodb:27017/energy_db?authSource=admin") \
         .config("spark.mongodb.write.connection.uri", MONGO_URI) \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://localhost:4566") \
+        .config("spark.hadoop.fs.s3a.endpoint", "http://localstack:4566") \
         .config("spark.hadoop.fs.s3a.access.key", "test") \
         .config("spark.hadoop.fs.s3a.secret.key", "test") \
         .config("spark.hadoop.fs.s3a.path.style.access", "true") \
