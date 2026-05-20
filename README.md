@@ -10,6 +10,7 @@ This project implements a robust ETL (Extract, Transform, Load) pipeline designe
 4. [Technical Data Explanation](#technical-data-explanation)
 5. [Project Structure](#project-structure)
 6. [Getting Started](#getting-started)
+7. [Running Tests](#running-tests)
 
 ---
 
@@ -185,3 +186,12 @@ Stop all services and delete all data and volumes (full reset):
 ```bash
 make clean
 ```
+
+### 7. Running Tests
+To ensure the transformation logic and integration are working correctly:
+```bash
+# Run unit tests (Mocked I/O)
+make test-unit
+
+# Run integration tests (Requires active containers)
+make test-integration

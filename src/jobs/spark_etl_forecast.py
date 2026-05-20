@@ -1,66 +1,33 @@
 import os
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import col, explode, arrays_zip, lit, round, when
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:admin@mongodb:27017/energy_db?authSource=admin")
 BUCKET_S3 = os.getenv("BUCKET_S3", "s3a://raw-zone/weather-data/*.json")
-
-JAR_DIR = os.path.expanduser("~/spark-jars")
-JARS = ",".join([
-    f"{JAR_DIR}/hadoop-aws-3.3.4.jar",
-    f"{JAR_DIR}/bundle-2.20.18.jar",
-    f"{JAR_DIR}/mongo-spark-connector_2.12-10.4.0.jar",
-])
+AWS_ENDPOINT = f"http://localstack:{os.getenv('LOCALSTACK_PORT', '4566')}"
 
 FACTOR = 2.5
 
-def create_spark_session() -> SparkSession:
+def transform_weather_data(df: DataFrame) -> DataFrame:
     """
-    Create Spark session
+    Pure transformation logic: Flattening and Generation Calculation
     """
-    return SparkSession.builder \
-        .appName("Energy_Forecast_ETL") \
-        .config("spark.mongodb.write.connection.uri", "mongodb://admin:admin@mongodb:27017/energy_db?authSource=admin") \
-        .config("spark.mongodb.write.connection.uri", MONGO_URI) \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://localstack:4566") \
-        .config("spark.hadoop.fs.s3a.access.key", "test") \
-        .config("spark.hadoop.fs.s3a.secret.key", "test") \
-        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-        .config("spark.hadoop.fs.s3a.aws.credentials.provider",
-                "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
-        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
-        .getOrCreate()
-
-def process_weather_data(spark: SparkSession):
-    """
-    Start the ETL process
-    """
-    hadoop_conf = spark.sparkContext._jsc.hadoopConfiguration()
-    hadoop_conf.set("fs.s3a.connection.timeout", "60000")
-    hadoop_conf.set("fs.s3a.socket.timeout", "60000")
-    hadoop_conf.set("fs.s3a.connection.request.timeout", "60000")
-    hadoop_conf.set("fs.s3a.attempts.maximum", "3")
-
-    print("Starting ETL process...")
-
-    raw_df = spark.read.option("multiline", "true").json(BUCKET_S3)
-
-    flattened_df = raw_df.withColumn(
+    flattened = df.withColumn(
         "zipped_data",
         arrays_zip(
             col("raw_payload.hourly.time"),
             col("raw_payload.hourly.wind_speed_100m")
         )
     ).withColumn("hourly_data", explode(col("zipped_data")))
-    processed_df = flattened_df.select(
+
+    processed = flattened.select(
         col("park_id"),
         lit("wind").alias("source"),
         col("hourly_data.time").cast("timestamp").alias("forecast_date"),
-        col("hourly_data.wind_speed_100m").alias("wind_speed"),
+        col("hourly_data.wind_speed_100m").alias("wind_speed")
     )
 
-    final_df = processed_df.withColumn(
+    return processed.withColumn(
         "estimated_generation_mwh",
         when(
             (col("wind_speed") > 3) & (col("wind_speed") < 25),
@@ -68,18 +35,35 @@ def process_weather_data(spark: SparkSession):
         ).otherwise(0.0)
     ).drop("wind_speed")
 
-    print("Saving transformed data on MongoDB...")
+def create_spark_session() -> SparkSession:
+    return SparkSession.builder \
+        .appName("Energy_Forecast_ETL") \
+        .config("spark.mongodb.write.connection.uri", MONGO_URI) \
+        .config("spark.hadoop.fs.s3a.endpoint", AWS_ENDPOINT) \
+        .config("spark.hadoop.fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", "test")) \
+        .config("spark.hadoop.fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", "test")) \
+        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+        .getOrCreate()
 
-    final_df.write \
-    .format("mongodb") \
-    .mode("append") \
-    .option("database", "energy_db") \
-    .option("collection", "forecasts") \
-    .save()
+def main():
+    spark = create_spark_session()
+    try:
+        print(f"Reading from {BUCKET_S3}...")
+        raw_df = spark.read.option("multiline", "true").json(BUCKET_S3)
 
-    print("Finished ETL process.")
+        # Calling the pure transformation
+        final_df = transform_weather_data(raw_df)
+
+        print("Saving to MongoDB...")
+        final_df.write.format("mongodb").mode("append") \
+            .option("database", "energy_db") \
+            .option("collection", "forecasts").save()
+
+        print("ETL Processed successfully.")
+    finally:
+        spark.stop()
+
 
 if __name__ == "__main__":
-    spark_session = create_spark_session()
-    process_weather_data(spark_session)
-    spark_session.stop()
+    main()

@@ -24,7 +24,7 @@ x-airflow-common: &airflow-common
     - ./plugins:/opt/airflow/plugins
     - /home/strutz/Desktop/Projects/renewable-generation/src/jobs:/opt/airflow/scripts
   networks:
-    - fraud-network
+    - aws-network
   depends_on:
     postgres:
       condition: service_healthy
@@ -43,7 +43,7 @@ services:
     volumes:
       - mongo_data:/data/db
     networks:
-      - fraud-network
+      - aws-network
 
   postgres:
     image: pgvector/pgvector:pg16
@@ -58,7 +58,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - fraud-network
+      - aws-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -118,7 +118,7 @@ services:
       - "localstack_data:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
-      - network
+      - aws-network
 
 volumes:
   mongo_data:

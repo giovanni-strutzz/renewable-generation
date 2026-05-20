@@ -10,5 +10,6 @@ RUN apt-get update && \
 
 USER airflow
 
+RUN pip install pytest pytest-mock pymongo requests
 RUN pip install --no-cache-dir pyspark==3.5.1
 RUN pip install apache-airflow-providers-standard
