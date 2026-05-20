@@ -3,7 +3,7 @@ import os
 import socket
 
 from pyspark.sql import SparkSession
-from pyspark.sql.connect.dataframe import DataFrame
+from pyspark.sql import DataFrame
 from pyspark.sql.functions import col, explode, arrays_zip, lit, round, when
 from datetime import datetime
 from great_expectations.dataset.sparkdf_dataset import SparkDFDataset
