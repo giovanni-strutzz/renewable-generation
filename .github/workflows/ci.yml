@@ -35,10 +35,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pyspark pyarrow>=15.0.0 great-expectations==0.18.19 pymongo boto3
 
-      - name: Set up JDK 11 (Required for Spark)
+      - name: Set up JDK 17 (Required for Spark)
         uses: actions/setup-java@v3
         with:
-          java-version: '11'
+          java-version: '17'
           distribution: 'temurin'
 
       - name: Run Unit Tests
