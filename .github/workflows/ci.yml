@@ -1,4 +1,4 @@
-name: CI Energy Pipeline
+name: CI Energy Pipeline Action
 
 on:
   push:
