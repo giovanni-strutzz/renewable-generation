@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from src.jobs.spark_etl_forecast import main  # Importamos o ponto de entrada real
 
 
-def test_full_pipeline_integration(spark):
+def test_full_pipeline_integration():
     """
     Valida o fluxo fim-a-fim: S3 -> Spark -> MongoDB.
     """
