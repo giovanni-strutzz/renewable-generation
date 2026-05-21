@@ -41,8 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Instalando delta-spark para suporte ao Delta Lake via Python
-          pip install pytest pyspark==3.5.0 delta-spark==2.4.0 pyarrow>=15.0.0 \
+          pip install pytest pyspark==3.4.1 delta-spark==2.4.0 pyarrow>=15.0.0 \
                       great-expectations==0.18.19 pymongo boto3 awscli
 
       - name: Cache Spark JARs
