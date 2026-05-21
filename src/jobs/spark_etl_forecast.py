@@ -15,7 +15,10 @@ BUCKET_S3_SILVER = "s3a://lakeouse/silver/weather_data"
 JAR_DIR = os.path.expanduser("~/spark-jars")
 JARS = ",".join([
     f"{JAR_DIR}/hadoop-aws-3.3.4.jar",
+    f"{JAR_DIR}/aws-java-sdk-bundle-1.12.262.jar",
     f"{JAR_DIR}/bundle-2.20.18.jar",
+    f"{JAR_DIR}/delta-core_2.12-2.4.0.jar",
+    f"{JAR_DIR}/delta-storage-2.4.0.jar",
     f"{JAR_DIR}/mongo-spark-connector_2.12-10.4.0.jar",
 ])
 
@@ -54,6 +57,7 @@ def create_spark_session() -> SparkSession:
     """
     return SparkSession.builder \
         .appName("Energy_Forecast_ETL") \
+        .config("spark.jars", JARS) \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
         .config("spark.hadoop.fs.s3a.endpoint", "http://localstack:4566") \

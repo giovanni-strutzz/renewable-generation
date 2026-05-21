@@ -3,12 +3,13 @@ name: CI Energy Pipeline Action
 on:
   push:
     branches: [ main, develop, tests ]
-    pull_request:
-      branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     services:
       mongodb:
         image: mongo:7
@@ -31,7 +32,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Set up JDK 17 (Required for Spark)
+      - name: Set up JDK 17 (Required for modern Spark)
         uses: actions/setup-java@v3
         with:
           java-version: '17'
@@ -40,38 +41,51 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pyspark pyarrow>=15.0.0 great-expectations==0.18.19 pymongo boto3 awscli
+          # Instalando delta-spark para suporte ao Delta Lake via Python
+          pip install pytest pyspark==3.5.0 delta-spark==2.4.0 pyarrow>=15.0.0 \
+                      great-expectations==0.18.19 pymongo boto3 awscli
 
       - name: Cache Spark JARs
         uses: actions/cache@v3
         with:
           path: ~/spark-jars
-          key: spark-jars-hadoop-3.3.4-awssdk-2.20.18-mongo-10.4.0
+          key: spark-jars-hadoop-3.3.4-awsv1-delta-2.4.0-mongo-10.4.0
 
       - name: Download Spark JARs
         run: |
           mkdir -p ~/spark-jars
+          # Hadoop AWS
           [ -f ~/spark-jars/hadoop-aws-3.3.4.jar ] || curl -fL -o ~/spark-jars/hadoop-aws-3.3.4.jar \
             https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
-          [ -f ~/spark-jars/bundle-2.20.18.jar ] || curl -fL -o ~/spark-jars/bundle-2.20.18.jar \
-            https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.20.18/bundle-2.20.18.jar
+          
+          # AWS SDK Bundle v1 (Necessário para compatibilidade com Hadoop 3.3.x)
+          [ -f ~/spark-jars/aws-java-sdk-bundle-1.12.262.jar ] || curl -fL -o ~/spark-jars/aws-java-sdk-bundle-1.12.262.jar \
+            https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
+          
+          # Mongo Spark Connector
           [ -f ~/spark-jars/mongo-spark-connector_2.12-10.4.0.jar ] || curl -fL -o ~/spark-jars/mongo-spark-connector_2.12-10.4.0.jar \
             https://repo1.maven.org/maven2/org/mongodb/spark/mongo-spark-connector_2.12/10.4.0/mongo-spark-connector_2.12-10.4.0.jar
+          
+          # Delta Lake Core & Storage
+          [ -f ~/spark-jars/delta-core_2.12-2.4.0.jar ] || curl -fL -o ~/spark-jars/delta-core_2.12-2.4.0.jar \
+            https://repo1.maven.org/maven2/io/delta/delta-core_2.12/2.4.0/delta-core_2.12-2.4.0.jar
+          [ -f ~/spark-jars/delta-storage-2.4.0.jar ] || curl -fL -o ~/spark-jars/delta-storage-2.4.0.jar \
+            https://repo1.maven.org/maven2/io/delta/delta-storage/2.4.0/delta-storage-2.4.0.jar
 
       - name: Wait for LocalStack and create S3 bucket
         run: |
           echo "Waiting for LocalStack..."
-          for i in {1..20}; do
+          for i in {1..30}; do
             curl -s http://localhost:4566/_localstack/health | grep '"s3": "available"' && break
             echo "Attempt $i: LocalStack not ready yet..."
             sleep 3
           done
 
-          aws --endpoint-url=http://localhost:4566 s3 mb s3://raw-zone \
-            --region us-east-1
-          aws --endpoint-url=http://localhost:4566 s3 mb s3://lakeouse \
-            --region us-east-1
+          # Provisionamento da infra de teste
+          aws --endpoint-url=http://localhost:4566 s3 mb s3://raw-zone --region us-east-1
+          aws --endpoint-url=http://localhost:4566 s3 mb s3://lakeouse --region us-east-1
 
+          # Criação do Mock Data para teste integrado
           echo '[{"park_id":"park-001","raw_payload":{"hourly":{"time":["2024-01-01T00:00"],"wind_speed_100m":[10.5]}}}]' \
             > /tmp/test-weather.json
           aws --endpoint-url=http://localhost:4566 s3 cp /tmp/test-weather.json \
