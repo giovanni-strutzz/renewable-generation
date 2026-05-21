@@ -43,7 +43,7 @@ class LogstashConfig:
                 sock.connect((self.host, self.port))
                 sock.sendall(json.dumps(payload).encode('utf-8'))
         except Exception as exc:
-            raise Exception(str(exc))
+            print(f"[WARN] Unavailable Logstash: {exc}.")
 
 
 logger = LogstashConfig()
