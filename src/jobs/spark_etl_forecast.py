@@ -142,7 +142,13 @@ def process_pipeline(spark: SparkSession):
         raise
 
 
-if __name__ == "__main__":
+def main():
     spark_session = create_spark_session()
-    process_pipeline(spark_session)
-    spark_session.stop()
+    try:
+        process_pipeline(spark_session)
+    finally:
+        spark_session.stop()
+
+
+if __name__ == "__main__":
+    main()
