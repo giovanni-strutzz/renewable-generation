@@ -21,6 +21,7 @@ jobs:
         env:
           SERVICES: s3
           AWS_DEFAULT_REGION: us-east-1
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -30,25 +31,64 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pyspark pyarrow>=15.0.0 great-expectations==0.18.19 pymongo boto3
-
       - name: Set up JDK 17 (Required for Spark)
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyspark pyarrow>=15.0.0 great-expectations==0.18.19 pymongo boto3 awscli
+
+      - name: Cache Spark JARs
+        uses: actions/cache@v3
+        with:
+          path: ~/spark-jars
+          key: spark-jars-hadoop-3.3.4-awssdk-2.20.18-mongo-10.4.0
+
+      - name: Download Spark JARs
+        run: |
+          mkdir -p ~/spark-jars
+          [ -f ~/spark-jars/hadoop-aws-3.3.4.jar ] || curl -fL -o ~/spark-jars/hadoop-aws-3.3.4.jar \
+            https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
+          [ -f ~/spark-jars/bundle-2.20.18.jar ] || curl -fL -o ~/spark-jars/bundle-2.20.18.jar \
+            https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.20.18/bundle-2.20.18.jar
+          [ -f ~/spark-jars/mongo-spark-connector_2.12-10.4.0.jar ] || curl -fL -o ~/spark-jars/mongo-spark-connector_2.12-10.4.0.jar \
+            https://repo1.maven.org/maven2/org/mongodb/spark/mongo-spark-connector_2.12/10.4.0/mongo-spark-connector_2.12-10.4.0.jar
+
+      - name: Wait for LocalStack and create S3 bucket
+        run: |
+          echo "Waiting for LocalStack..."
+          for i in {1..20}; do
+            curl -s http://localhost:4566/_localstack/health | grep '"s3": "available"' && break
+            echo "Attempt $i: LocalStack not ready yet..."
+            sleep 3
+          done
+
+          aws --endpoint-url=http://localhost:4566 s3 mb s3://raw-zone \
+            --region us-east-1
+          aws --endpoint-url=http://localhost:4566 s3 mb s3://lakeouse \
+            --region us-east-1
+
+          echo '[{"park_id":"park-001","raw_payload":{"hourly":{"time":["2024-01-01T00:00"],"wind_speed_100m":[10.5]}}}]' \
+            > /tmp/test-weather.json
+          aws --endpoint-url=http://localhost:4566 s3 cp /tmp/test-weather.json \
+            s3://raw-zone/weather-data/test-weather.json
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: us-east-1
+
       - name: Run Unit Tests
         run: pytest tests/test_unit.py
 
       - name: Run Integration Tests
+        run: pytest tests/test_integration.py -v
         env:
           MONGO_URI: mongodb://localhost:27017/energy_db
           BUCKET_S3: s3a://raw-zone/weather-data/*.json
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
-        run: |
-          pytest tests/test_integration.py
+          AWS_DEFAULT_REGION: us-east-1
