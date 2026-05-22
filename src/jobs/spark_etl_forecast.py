@@ -55,12 +55,13 @@ def create_spark_session() -> SparkSession:
     """
     Create Spark session
     """
+    s3_endpoint = os.getenv("S3_ENDPOINT", "http://localstack:4566")
     return SparkSession.builder \
         .appName("Energy_Forecast_ETL") \
         .config("spark.jars", JARS) \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://localstack:4566") \
+        .config("spark.hadoop.fs.s3a.endpoint", s3_endpoint) \
         .config("spark.hadoop.fs.s3a.access.key", "test") \
         .config("spark.hadoop.fs.s3a.secret.key", "test") \
         .config("spark.hadoop.fs.s3a.path.style.access", "true") \

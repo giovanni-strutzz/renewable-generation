@@ -42,7 +42,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pytest pyspark==3.4.1 delta-spark==2.4.0 pyarrow>=15.0.0 \
-                      great-expectations==0.18.19 pymongo boto3 awscli
+                      great-expectations==0.18.22 pymongo boto3 awscli
 
       - name: Cache Spark JARs
         uses: actions/cache@v3
@@ -102,6 +102,7 @@ jobs:
         env:
           MONGO_URI: mongodb://localhost:27017/energy_db
           BUCKET_S3: s3a://raw-zone/weather-data/*.json
+          S3_ENDPOINT: http://localhost:4566
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
           AWS_DEFAULT_REGION: us-east-1
