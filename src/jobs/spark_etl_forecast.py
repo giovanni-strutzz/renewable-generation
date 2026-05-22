@@ -15,8 +15,14 @@ BUCKET_S3_SILVER = "s3a://lakeouse/silver/weather_data"
 JAR_DIR = os.path.expanduser("~/spark-jars")
 JARS = ",".join([
     f"{JAR_DIR}/hadoop-aws-3.3.4.jar",
+    f"{JAR_DIR}/aws-java-sdk-bundle-1.12.262.jar",
     f"{JAR_DIR}/bundle-2.20.18.jar",
+    f"{JAR_DIR}/delta-core_2.12-2.4.0.jar",
+    f"{JAR_DIR}/delta-storage-2.4.0.jar",
     f"{JAR_DIR}/mongo-spark-connector_2.12-10.4.0.jar",
+    f"{JAR_DIR}/mongodb-driver-sync-4.11.1.jar",
+    f"{JAR_DIR}/mongodb-driver-core-4.11.1.jar",
+    f"{JAR_DIR}/bson-4.11.1.jar",
 ])
 
 FACTOR = 2.5
@@ -52,16 +58,20 @@ def create_spark_session() -> SparkSession:
     """
     Create Spark session
     """
+    s3_endpoint = os.getenv("S3_ENDPOINT", "http://localstack:4566")
     return SparkSession.builder \
         .appName("Energy_Forecast_ETL") \
+        .config("spark.jars", JARS) \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://localstack:4566") \
+        .config("spark.hadoop.fs.s3a.endpoint", s3_endpoint) \
         .config("spark.hadoop.fs.s3a.access.key", "test") \
         .config("spark.hadoop.fs.s3a.secret.key", "test") \
         .config("spark.hadoop.fs.s3a.path.style.access", "true") \
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
         .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
+        .config("spark.mongodb.write.connection.uri", os.getenv("MONGO_URI", "mongodb://localhost:27017")) \
+        .config("spark.mongodb.read.connection.uri", os.getenv("MONGO_URI", "mongodb://localhost:27017")) \
         .getOrCreate()
 
 
