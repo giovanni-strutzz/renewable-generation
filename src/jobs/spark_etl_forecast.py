@@ -20,6 +20,9 @@ JARS = ",".join([
     f"{JAR_DIR}/delta-core_2.12-2.4.0.jar",
     f"{JAR_DIR}/delta-storage-2.4.0.jar",
     f"{JAR_DIR}/mongo-spark-connector_2.12-10.4.0.jar",
+    f"{JAR_DIR}/mongodb-driver-sync-4.11.1.jar",
+    f"{JAR_DIR}/mongodb-driver-core-4.11.1.jar",
+    f"{JAR_DIR}/bson-4.11.1.jar",
 ])
 
 FACTOR = 2.5
@@ -67,6 +70,8 @@ def create_spark_session() -> SparkSession:
         .config("spark.hadoop.fs.s3a.path.style.access", "true") \
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
         .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
+        .config("spark.mongodb.write.connection.uri", os.getenv("MONGO_URI", "mongodb://localhost:27017")) \
+        .config("spark.mongodb.read.connection.uri", os.getenv("MONGO_URI", "mongodb://localhost:27017")) \
         .getOrCreate()
 
 
